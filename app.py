@@ -7,7 +7,7 @@ app = Flask(__name__)
 server = 'library-server-atici.database.windows.net'
 database = 'LibraryDB'
 username = 'adminuser'
-password = FinalProject123!
+password = 'FinalProject123!'
 driver= '{ODBC Driver 17 for SQL Server}'
 
 @app.route('/')
