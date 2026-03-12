@@ -14,25 +14,6 @@ def get_db_connection():
     conn = pyodbc.connect(f'DRIVER={driver};SERVER={server};PORT=1433;DATABASE={database};UID={username};PWD={password}')
     return conn
 
-# Yeni ve Gelişmiş Tabloyu Oluştur (BooksV2)
-try:
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='BooksV2' and xtype='U')
-        CREATE TABLE BooksV2 (
-            id INT IDENTITY(1,1) PRIMARY KEY,
-            title NVARCHAR(100),
-            author NVARCHAR(100),
-            image_url NVARCHAR(MAX),
-            summary NVARCHAR(MAX)
-        )
-    ''')
-    conn.commit()
-    conn.close()
-except Exception as e:
-    print("Tablo oluşturma hatası:", e)
-
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'POST':
@@ -55,20 +36,24 @@ def home():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT title, author, image_url, summary FROM BooksV2')
+        # id sütununu da çekiyoruz ki tıklama ve silme işlemi yapabilelim
+        cursor.execute('SELECT id, title, author, image_url, summary FROM BooksV2')
         rows = cursor.fetchall()
         for row in rows:
-            # Resim linki boşsa varsayılan bir kapak resmi koy
             img_src = row.image_url if row.image_url else "https://via.placeholder.com/200x300?text=Kapak+Yok"
             books_html += f"""
-            <div style="width: 220px; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1); background: white; margin-bottom: 20px; transition: transform 0.2s;">
-                <img src="{img_src}" alt="Kapak" style="width: 100%; height: 320px; object-fit: cover;">
-                <div style="padding: 15px;">
-                    <h4 style="margin: 0 0 5px 0; color: #222; font-size: 16px;">{row.title}</h4>
-                    <p style="margin: 0 0 10px 0; color: #555; font-size: 14px;"><i>{row.author}</i></p>
-                    <hr style="border: 0.5px solid #eee;">
-                    <p style="margin: 10px 0 0 0; font-size: 12px; color: #666; line-height: 1.4;">{row.summary}</p>
-                </div>
+            <div style="width: 200px; position: relative; border-radius: 10px; overflow: hidden; box-shadow: 0 6px 12px rgba(0,0,0,0.15); background: white; transition: transform 0.2s; text-align: center;">
+                
+                <form action="/delete/{row.id}" method="POST" style="position: absolute; top: 8px; right: 8px; margin: 0; z-index: 10;">
+                    <button type="submit" style="background: rgba(220, 53, 69, 0.9); color: white; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);" title="Kitabı Sil" onclick="return confirm('Bu kitabı silmek istediğinize emin misiniz?');">X</button>
+                </form>
+
+                <a href="/book/{row.id}" style="text-decoration: none; color: inherit; display: block;">
+                    <img src="{img_src}" alt="Kapak" style="width: 100%; height: 300px; object-fit: cover;">
+                    <div style="padding: 10px;">
+                        <h4 style="margin: 0; font-size: 15px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{row.title}</h4>
+                    </div>
+                </a>
             </div>
             """
         conn.close()
@@ -86,7 +71,8 @@ def home():
             input, textarea {{ width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: inherit; }}
             .btn {{ padding: 12px 20px; background-color: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; }}
             .btn:hover {{ background-color: #0056b3; }}
-            .grid {{ display: flex; flex-wrap: wrap; gap: 25px; }}
+            .grid {{ display: flex; flex-wrap: wrap; gap: 25px; justify-content: flex-start; }}
+            .grid > div:hover {{ transform: scale(1.03); }}
         </style>
     </head>
     <body>
@@ -102,7 +88,7 @@ def home():
                     <input type="text" name="title" placeholder="Kitap Adı" required>
                     <input type="text" name="author" placeholder="Yazar Adı" required>
                     <input type="text" name="image_url" placeholder="Kapak Fotoğrafı İnternet Linki (Örn: https://.../resim.jpg)" required>
-                    <textarea name="summary" placeholder="Kitap Özeti (Kısa bir açıklama yazın)" rows="3" required></textarea>
+                    <textarea name="summary" placeholder="Kitap Özeti (Kısa bir açıklama yazın)" rows="2" required></textarea>
                     <input type="submit" value="Kütüphaneye Ekle" class="btn">
                 </form>
             </div>
@@ -116,6 +102,71 @@ def home():
     </html>
     """
     return html_template
+
+
+# YENİ ÖZELLİK: KİTAP DETAY SAYFASI
+@app.route('/book/<int:book_id>')
+def book_detail(book_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT title, author, image_url, summary FROM BooksV2 WHERE id = ?', (book_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if not row:
+            return "<h3>Kitap bulunamadı!</h3><a href='/'>Ana Sayfaya Dön</a>"
+            
+        img_src = row.image_url if row.image_url else "https://via.placeholder.com/300x450?text=Kapak+Yok"
+        
+        detail_html = f"""
+        <html>
+        <head>
+            <title>{row.title} - Detay</title>
+            <style>
+                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 40px 20px; background-color: #f8f9fa; }}
+                .container {{ max-width: 800px; margin: auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }}
+                .back-btn {{ display: inline-block; margin-bottom: 30px; color: #007bff; text-decoration: none; font-weight: bold; font-size: 16px; padding: 10px 20px; border: 2px solid #007bff; border-radius: 6px; transition: 0.2s; }}
+                .back-btn:hover {{ background: #007bff; color: white; }}
+                .content {{ display: flex; gap: 40px; align-items: flex-start; }}
+                .cover-img {{ width: 280px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); flex-shrink: 0; }}
+                .info {{ flex-grow: 1; }}
+                h1 {{ margin-top: 0; color: #222; font-size: 36px; margin-bottom: 10px; }}
+                h3 {{ color: #666; margin-top: 0; font-style: italic; font-weight: normal; font-size: 20px; }}
+                p {{ font-size: 18px; line-height: 1.8; color: #444; margin-top: 20px; text-align: justify; padding: 20px; background: #fdfdfd; border-left: 4px solid #007bff; border-radius: 4px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <a href="/" class="back-btn">← Kütüphaneye Dön</a>
+                <div class="content">
+                    <img src="{img_src}" alt="Kapak" class="cover-img">
+                    <div class="info">
+                        <h1>{row.title}</h1>
+                        <h3>{row.author}</h3>
+                        <p>{row.summary}</p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        return detail_html
+    except Exception as e:
+        return f"Hata: {e}"
+
+# YENİ ÖZELLİK: KİTAP SİLME İŞLEMİ
+@app.route('/delete/<int:book_id>', methods=['POST'])
+def delete_book(book_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM BooksV2 WHERE id = ?', (book_id,))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print("Silme hatası:", e)
+    return redirect(url_for('home'))
 
 if __name__ == '__main__':
     app.run(debug=True)
