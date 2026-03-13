@@ -63,7 +63,7 @@ def home():
             conn = get_db_connection()
             cursor = conn.cursor()
             # KİTAP EKLEME TABLO ADI: Books
-            cursor.execute('INSERT INTO Books (title, author, image_url, summary) VALUES (?, ?, ?, ?)', 
+            cursor.execute('INSERT INTO BooksV2 (title, author, image_url, summary) VALUES (?, ?, ?, ?)', 
                            (request.form['title'], request.form['author'], request.form['image_url'], request.form['summary']))
             conn.commit()
             conn.close()
@@ -76,7 +76,7 @@ def home():
         conn = get_db_connection()
         cursor = conn.cursor()
         # KİTAP LİSTELEME TABLO ADI: Books
-        cursor.execute('SELECT id, title, author, image_url FROM Books')
+        cursor.execute('SELECT id, title, author, image_url FROM BooksV2')
         rows = cursor.fetchall()
         total_books = len(rows)
         for row in rows:
