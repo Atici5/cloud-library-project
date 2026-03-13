@@ -62,7 +62,7 @@ def home():
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute('INSERT INTO BooksV2 (title, author, image_url, summary) VALUES (?, ?, ?, ?)', 
+            cursor.execute('INSERT INTO Books (title, author, image_url, summary) VALUES (?, ?, ?, ?)', 
                            (request.form['title'], request.form['author'], request.form['image_url'], request.form['summary']))
             conn.commit()
             conn.close()
@@ -74,7 +74,7 @@ def home():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT id, title, author, image_url FROM BooksV2')
+        cursor.execute('SELECT id, title, author, image_url FROM Books')
         rows = cursor.fetchall()
         total_books = len(rows)
         for row in rows:
@@ -106,7 +106,7 @@ def home():
         </form>
         <a href="/logout" style="color:#666; font-size:12px; text-decoration:none; display:inline-block; margin-top:15px;">Secure Logout</a>
     </div>
-    """ if is_admin else '<div style="text-align:center; margin-top: 40px;"><a href="/login" style="color:#333; text-decoration:none; font-size:12px;">Staff Access</a></div>'
+    """ if is_admin else '<a href="/login" class="staff-btn">Staff Access</a>'
 
     return f"""
     <html>
@@ -115,7 +115,12 @@ def home():
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
         <style>
             body {{ background: #050505; color: white; font-family: 'Inter', sans-serif; margin: 0; padding: 40px 20px; }}
-            .container {{ max-width: 1200px; margin: auto; }}
+            
+            /* SAĞ ÜST KÖŞE GİRİŞ BUTONU */
+            .staff-btn {{ position: absolute; top: 30px; right: 40px; color: #444; font-size: 12px; font-weight: bold; letter-spacing: 1px; text-decoration: none; text-transform: uppercase; transition: color 0.3s; z-index: 100; }}
+            .staff-btn:hover {{ color: #e50914; }}
+
+            .container {{ max-width: 1200px; margin: auto; position: relative; }}
             h1 {{ font-size: 55px; text-align: center; color: #e50914; letter-spacing: 10px; margin-bottom: 5px; font-weight: 700; }}
             .stats {{ text-align: center; color: #666; margin-bottom: 35px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }}
             
@@ -142,13 +147,12 @@ def home():
         </style>
     </head>
     <body>
+        {admin_section}
         <div class="container">
             <h1>SHELFLY</h1>
             <div class="stats">Curating <b>{total_books}</b> Masterpieces in our Archive</div>
             
             <input type="text" id="searchInput" class="search-box" placeholder="Search the collection..." onkeyup="searchBooks()">
-
-            {admin_section}
 
             <div class="grid" id="bookGrid">
                 {books_html if books_html else "<p style='color:#444'>No books found in the archive.</p>"}
@@ -174,7 +178,7 @@ def book_detail(book_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT title, author, image_url, summary FROM BooksV2 WHERE id = ?', (book_id,))
+        cursor.execute('SELECT title, author, image_url, summary FROM Books WHERE id = ?', (book_id,))
         row = cursor.fetchone()
         conn.close()
         return f"""
@@ -221,7 +225,7 @@ def delete_book(book_id):
     if session.get('logged_in'):
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM BooksV2 WHERE id = ?', (book_id,))
+        cursor.execute('DELETE FROM Books WHERE id = ?', (book_id,))
         conn.commit()
         conn.close()
     return redirect(url_for('home'))
