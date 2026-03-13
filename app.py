@@ -62,6 +62,7 @@ def home():
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+            # KİTAP EKLEME TABLO ADI: Books
             cursor.execute('INSERT INTO Books (title, author, image_url, summary) VALUES (?, ?, ?, ?)', 
                            (request.form['title'], request.form['author'], request.form['image_url'], request.form['summary']))
             conn.commit()
@@ -74,6 +75,7 @@ def home():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        # KİTAP LİSTELEME TABLO ADI: Books
         cursor.execute('SELECT id, title, author, image_url FROM Books')
         rows = cursor.fetchall()
         total_books = len(rows)
@@ -94,6 +96,7 @@ def home():
         conn.close()
     except: pass
 
+    # SAĞ ÜSTTEKİ BUTON VE ADMİN PANELİ
     admin_section = f"""
     <div class="admin-panel">
         <h3 style="color: #e50914; margin-top:0;">✨ Admin Dashboard</h3>
@@ -116,7 +119,6 @@ def home():
         <style>
             body {{ background: #050505; color: white; font-family: 'Inter', sans-serif; margin: 0; padding: 40px 20px; }}
             
-            /* SAĞ ÜST KÖŞE GİRİŞ BUTONU */
             .staff-btn {{ position: absolute; top: 30px; right: 40px; color: #444; font-size: 12px; font-weight: bold; letter-spacing: 1px; text-decoration: none; text-transform: uppercase; transition: color 0.3s; z-index: 100; }}
             .staff-btn:hover {{ color: #e50914; }}
 
@@ -155,7 +157,7 @@ def home():
             <input type="text" id="searchInput" class="search-box" placeholder="Search the collection..." onkeyup="searchBooks()">
 
             <div class="grid" id="bookGrid">
-                {books_html if books_html else "<p style='color:#444'>No books found in the archive.</p>"}
+                {books_html if books_html else "<p style='color:#444; text-align:center; width:100%;'>No books found in the archive.</p>"}
             </div>
         </div>
 
@@ -178,13 +180,14 @@ def book_detail(book_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        # DETAY SAYFASI TABLO ADI: Books
         cursor.execute('SELECT title, author, image_url, summary FROM Books WHERE id = ?', (book_id,))
         row = cursor.fetchone()
         conn.close()
         return f"""
         <html>
         <head>
-            <title>{row.title} | Shelfly Details</title>
+            <title>{row.title} | Details</title>
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
             <style>
                 body {{ background: #050505; color: white; font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }}
@@ -196,11 +199,6 @@ def book_detail(book_id):
                 h1 {{ font-size: 52px; margin: 0; line-height: 1.1; }}
                 h3 {{ color: #e50914; margin: 15px 0 35px 0; font-weight: 400; font-size: 22px; opacity: 0.9; }}
                 p {{ font-size: 19px; line-height: 1.8; color: #ccc; text-align: justify; }}
-                
-                @media (max-width: 850px) {{
-                    .container {{ flex-direction: column; text-align: center; }}
-                    .cover {{ width: 280px; }}
-                }}
             </style>
         </head>
         <body>
